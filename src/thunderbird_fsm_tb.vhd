@@ -57,28 +57,89 @@ end thunderbird_fsm_tb;
 architecture test_bench of thunderbird_fsm_tb is 
 	
 	component thunderbird_fsm is 
---	  port(
-		
---	  );
+	  port(
+		i_clk, i_reset  : in    std_logic;
+        i_left, i_right : in    std_logic;
+        o_lights_L      : out   std_logic_vector(2 downto 0);
+        o_lights_R      : out   std_logic_vector(2 downto 0)
+	  );
 	end component thunderbird_fsm;
 
 	-- test I/O signals
+	signal w_clk, w_left, w_right, w_reset : std_logic := '0';
+	signal w_lights : std_logic_vector(5 downto 0) := "000000";
 	
 	-- constants
 	
-	
+	constant k_clk_period : time := 10 ns;
 begin
 	-- PORT MAPS ----------------------------------------
-	
+	uut: thunderbird_fsm port map (
+	       i_clk => w_clk,
+	       i_reset => w_reset,
+	       i_left => w_left,
+	       i_right => w_right,
+	       o_lights_L => w_lights(5 downto 3), 
+	       o_lights_R => w_lights(2 downto 0)
+	       
+	       ); 
+	       
 	-----------------------------------------------------
 	
 	-- PROCESSES ----------------------------------------	
     -- Clock process ------------------------------------
-    
+    clk_proc : process
+	begin
+		w_clk <= '0';
+        wait for k_clk_period/2;
+		w_clk <= '1';
+		wait for k_clk_period/2;
+	end process;
 	-----------------------------------------------------
 	
 	-- Test Plan Process --------------------------------
-	
+	test_proc: process
+	begin 
+	   -- sequential timing		
+		w_reset <= '1';
+		wait for k_clk_period*1;
+		  assert w_lights= "000000" report "bad reset" severity failure; 
+		
+		w_reset <= '0';
+		wait for k_clk_period*1;
+		
+		--left turn signal
+		w_left <= '1'; wait for k_clk_period;
+		   assert w_lights = "100000" report "bad left turn" severity failure;
+		wait for k_clk_period; 
+		   assert w_lights = "110000" report "bad left turn" severity failure; 
+		wait for k_clk_period;
+	       assert w_lights = "111000" report "bad left turn" severity failure;
+	    wait for k_clk_period;
+	       assert w_lights = "000000" report "left doesnt go back to off" severity failure; 
+	    
+	    --right turn signal 
+	    w_right <= '1'; wait for k_clk_period;
+	       assert w_lights = "000100" report "bad right turn" severity failure; 
+	    wait for k_clk_period; 
+	       assert w_lights = "000110" report "bad right turn" severity failure; 
+	    wait for k_clk_period;
+	       assert w_lights = "000111" report "bad right turn" severity failure; 
+	    wait for k_clk_period; 
+	       assert w_lights = "000000" report "right doesnt turn off" severity failure; 
+	  
+	    --Hazard lights
+	    w_left <= '1';
+	    w_right <= '1'; wait for k_clk_period;
+	       assert w_lights = "111111" report "bad hazards" severity failure;
+	    wait for k_clk_period;
+	    w_left <= '0'; 
+	    w_right <= '0'; 
+	       assert w_lights = "000000" report "bad hazards" severity failure; 
+	   
+	   wait;
+	end process; 
+	    
 	-----------------------------------------------------	
 	
 end test_bench;
